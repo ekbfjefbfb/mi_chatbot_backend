@@ -10,13 +10,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-BLIP2_MODEL = os.getenv("BLIP2_MODEL", "Salesforce/blip2-flan-t5-small")
+BLIP_MODEL = os.getenv("BLIP_MODEL")
 HF_TOKEN = os.getenv("HF_TOKEN")  # Opcional si tu modelo no necesita autenticación
 
 # ----------------------------
 # Inicializar FastAPI
 # ----------------------------
-app = FastAPI(title="Backend BLIP2 + DeepSeek V3")
+app = FastAPI(title="Backend BLIP + DeepSeek V3")
 
 # ----------------------------
 # Parámetros de optimización
@@ -31,7 +31,7 @@ def generar_respuesta_deepseek(message: str) -> str:
     payload = {"prompt": message, "max_tokens": 150}
     try:
         response = requests.post("https://api.deepseek.ai/v3/text-generation", json=payload, headers=headers)
-        if response.status_code == 200:
+        if response.status_code == 150:
             data = response.json()
             return data.get("text", "No se pudo generar respuesta.")
         else:
@@ -48,15 +48,15 @@ async def chat_endpoint(message: str = Form(...), image: UploadFile = None):
 
     if image:
         # Lazy loading de librerías pesadas
-        from transformers import AutoProcessor, Blip2ForConditionalGeneration
+        from transformers import AutoProcessor, BlipForConditionalGeneration
         import torch
 
         # Configurar dispositivo
         device = torch.device("cpu")
 
         # Cargar modelo BLIP2 (small)
-        processor = AutoProcessor.from_pretrained(BLIP2_MODEL, use_fast=False)
-        blip2_model = Blip2ForConditionalGeneration.from_pretrained(BLIP2_MODEL).to(device)
+        processor = AutoProcessor.from_pretrained(BLIP_MODEL)
+        blip2_model = BlipForConditionalGeneration.from_pretrained(BLIP_MODEL).to(device)
 
         # Procesar imagen con redimensión
         img = Image.open(image.file).convert("RGB")
@@ -64,7 +64,7 @@ async def chat_endpoint(message: str = Form(...), image: UploadFile = None):
         inputs = processor(images=img, return_tensors="pt").to(device)
 
         # Generar caption
-        output_ids = blip2_model.generate(**inputs, max_length=50)
+        output_ids = blip_model.generate(**inputs, max_length=50)
         caption = processor.decode(output_ids[0], skip_special_tokens=True)
         bot_message += f"📸 Caption de la imagen: {caption}\n"
 
