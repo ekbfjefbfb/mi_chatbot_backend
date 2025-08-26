@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # ----------------------------
 # Cargar modelo BLIP2
 # ----------------------------
-processor = AutoProcessor.from_pretrained(BLIP2_MODEL)
+processor = AutoProcessor.from_pretrained(BLIP2_MODEL ,use_fast=False)
 blip2_model = Blip2ForConditionalGeneration.from_pretrained(BLIP2_MODEL).to(device)
 
 # ----------------------------
