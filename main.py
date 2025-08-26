@@ -13,7 +13,7 @@ load_dotenv()
 
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 BLIP2_MODEL = os.getenv("BLIP2_MODEL", "Salesforce/blip2-flan-t5-xl")
-HF_TOKEN = os.getenv("HF_TOKEN")  # Opcional si tu modelo no necesita autenticación
+HF_TOKEN = os.getenv("HF_TOKEN")
 
 # ----------------------------
 # Inicializar FastAPI
@@ -28,9 +28,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # ----------------------------
 # Cargar modelo BLIP2
 # ----------------------------
-processor = AutoProcessor.from_pretrained(BLIP2_MODEL, use_auth_token=HF_TOKEN)
-blip2_model = Blip2ForConditionalGeneration.from_pretrained(BLIP2_MODEL, torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32, use_auth_token=HF_TOKEN).to(device)
-blip2_model.eval()
+processor = AutoProcessor.from_pretrained(BLIP2_MODEL)
+blip2_model = Blip2ForConditionalGeneration.from_pretrained(BLIP2_MODEL).to(device)
 
 # ----------------------------
 # Función para generar respuesta DeepSeek
@@ -56,8 +55,8 @@ async def chat_endpoint(message: str = Form(...), image: UploadFile = None):
     if image:
         img = Image.open(image.file).convert("RGB")
         inputs = processor(images=img, return_tensors="pt").to(device)
-        generated_ids = blip2_model.generate(**inputs, max_length=50)
-        caption = processor.decode(generated_ids[0], skip_special_tokens=True)
+        output_ids = blip2_model.generate(**inputs, max_length=50)
+        caption = processor.decode(output_ids[0], skip_special_tokens=True)
         bot_message += f"📸 Caption de la imagen: {caption}\n"
 
     # Generar respuesta DeepSeek
