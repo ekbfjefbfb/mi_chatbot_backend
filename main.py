@@ -42,7 +42,7 @@ def generar_respuesta_deepseek(message: str) -> str:
 # ----------------------------
 # Endpoint principal
 # ----------------------------
-@app.post("/chat/")
+@app.post("/chat")
 async def chat_endpoint(message: str = Form(...), image: UploadFile = None):
     bot_message = ""
 
