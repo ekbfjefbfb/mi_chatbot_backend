@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: mi_chatbot_backend
+    env: python
+    pythonVersion: "3.11"
+
