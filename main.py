@@ -1,7 +1,5 @@
 from fastapi import FastAPI, UploadFile, Form
-from transformers import AutoProcessor, Blip2ForConditionalGeneration
 from PIL import Image
-import torch
 import requests
 import os
 from dotenv import load_dotenv
@@ -12,8 +10,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-BLIP2_MODEL = os.getenv("BLIP2_MODEL", "Salesforce/blip2-flan-t5-xl")
-HF_TOKEN = os.getenv("HF_TOKEN")
+BLIP2_MODEL = os.getenv("BLIP2_MODEL", "Salesforce/blip2-flan-t5-small")
+HF_TOKEN = os.getenv("HF_TOKEN")  # Opcional si tu modelo no necesita autenticación
 
 # ----------------------------
 # Inicializar FastAPI
@@ -21,15 +19,9 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 app = FastAPI(title="Backend BLIP2 + DeepSeek V3")
 
 # ----------------------------
-# Configurar dispositivo
+# Parámetros de optimización
 # ----------------------------
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# ----------------------------
-# Cargar modelo BLIP2
-# ----------------------------
-processor = AutoProcessor.from_pretrained(BLIP2_MODEL ,use_fast=False)
-blip2_model = Blip2ForConditionalGeneration.from_pretrained(BLIP2_MODEL).to(device)
+MAX_IMAGE_SIZE = (512, 512)  # Redimensionar imágenes para ahorrar RAM
 
 # ----------------------------
 # Función para generar respuesta DeepSeek
@@ -37,12 +29,15 @@ blip2_model = Blip2ForConditionalGeneration.from_pretrained(BLIP2_MODEL).to(devi
 def generar_respuesta_deepseek(message: str) -> str:
     headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}"}
     payload = {"prompt": message, "max_tokens": 150}
-    response = requests.post("https://api.deepseek.ai/v3/text-generation", json=payload, headers=headers)
-    if response.status_code == 200:
-        data = response.json()
-        return data.get("text", "No se pudo generar respuesta.")
-    else:
-        return f"Error: {response.status_code} {response.text}"
+    try:
+        response = requests.post("https://api.deepseek.ai/v3/text-generation", json=payload, headers=headers)
+        if response.status_code == 200:
+            data = response.json()
+            return data.get("text", "No se pudo generar respuesta.")
+        else:
+            return f"Error: {response.status_code} {response.text}"
+    except Exception as e:
+        return f"Error al conectar con DeepSeek: {str(e)}"
 
 # ----------------------------
 # Endpoint principal
@@ -51,10 +46,24 @@ def generar_respuesta_deepseek(message: str) -> str:
 async def chat_endpoint(message: str = Form(...), image: UploadFile = None):
     bot_message = ""
 
-    # Procesar imagen si existe
     if image:
+        # Lazy loading de librerías pesadas
+        from transformers import AutoProcessor, Blip2ForConditionalGeneration
+        import torch
+
+        # Configurar dispositivo
+        device = torch.device("cpu")
+
+        # Cargar modelo BLIP2 (small)
+        processor = AutoProcessor.from_pretrained(BLIP2_MODEL, use_fast=False)
+        blip2_model = Blip2ForConditionalGeneration.from_pretrained(BLIP2_MODEL).to(device)
+
+        # Procesar imagen con redimensión
         img = Image.open(image.file).convert("RGB")
+        img.thumbnail(MAX_IMAGE_SIZE)
         inputs = processor(images=img, return_tensors="pt").to(device)
+
+        # Generar caption
         output_ids = blip2_model.generate(**inputs, max_length=50)
         caption = processor.decode(output_ids[0], skip_special_tokens=True)
         bot_message += f"📸 Caption de la imagen: {caption}\n"
@@ -70,4 +79,5 @@ async def chat_endpoint(message: str = Form(...), image: UploadFile = None):
 # ----------------------------
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, workers=1)
+
