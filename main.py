@@ -37,25 +37,24 @@ MAX_IMAGE_SIZE = (512, 512)  # Redimensionar imágenes para ahorrar RAM
 # ----------------------------
 # Función para generar respuesta DeepSeek
 # ----------------------------
-def generar_respuesta_deepseek(message: str) -> str:
-    headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}"}
-    payload = {"prompt": message, "max_tokens": 150}
+def generar_respuesta_gpt(message: str) -> str:
     try:
-        response = requests.post(
-            "https://api.deepseek.ai/v3/text-generation", json=payload, headers=headers
+        response = openai.ChatCompletion.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {"role": "system", "content": "Eres un asistente educativo que explica conceptos de manera clara y sencilla."},
+                {"role": "user", "content": message}
+            ],
+            max_tokens=150
         )
-        if response.status_code == 200:  # estaba 150, debe ser 200
-            data = response.json()
-            return data.get("text", "No se pudo generar respuesta.")
-        else:
-            return f"Error: {response.status_code} {response.text}"
+        return response['choices'][0]['message']['content']
     except Exception as e:
-        return f"Error al conectar con DeepSeek: {str(e)}"
+        return f"Error al conectar con GPT-4.1 mini: {str(e)}"
 
 # ----------------------------
 # Endpoint principal
 # ----------------------------
-@app.post("/chat")
+@app.post("/chat/")
 async def chat_endpoint(message: str = Form(...), image: UploadFile = None):
     bot_message = ""
 
@@ -77,11 +76,12 @@ async def chat_endpoint(message: str = Form(...), image: UploadFile = None):
         caption = processor.decode(output_ids[0], skip_special_tokens=True)
         bot_message += f"📸 Caption de la imagen: {caption}\n"
 
-    deepseek_response = generar_respuesta_deepseek(message)
-    bot_message += f"🤖 DeepSeek V3 dice: {deepseek_response}"
+
+    # Aquí reemplazamos DeepSeek por GPT-4.1 mini
+    gpt_response = generar_respuesta_gpt(message)
+    bot_message += f"🤖 GPT-4.1 mini dice: {gpt_response}"
 
     return {"response": bot_message}
-
 # ----------------------------
 # Para correr local (opcional)
 # ----------------------------
