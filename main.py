@@ -79,7 +79,7 @@ async def chat_endpoint(message: str = Form(...), image: UploadFile = None):
 
     # Aquí reemplazamos DeepSeek por GPT-4.1 mini
     gpt_response = generar_respuesta_gpt(message)
-    bot_message += f"🤖 GPT-4.1 mini dice: {gpt_response}"
+    bot_message += f"🤖  {gpt_response}"
 
     return {"response": bot_message}
 # ----------------------------
