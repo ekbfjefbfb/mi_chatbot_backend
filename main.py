@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
-import requests
+import openai
 import os
 from dotenv import load_dotenv
 
@@ -35,7 +35,7 @@ app.add_middleware(
 MAX_IMAGE_SIZE = (512, 512)  # Redimensionar imágenes para ahorrar RAM
 
 # ----------------------------
-# Función para generar respuesta DeepSeek
+# Función para generar respuesta GPT4.1 min
 # ----------------------------
 def generar_respuesta_gpt(message: str) -> str:
     try:
