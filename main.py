@@ -9,14 +9,14 @@ from dotenv import load_dotenv
 # Cargar variables de entorno
 # ----------------------------
 load_dotenv()
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+OPENIA_API_KEY = os.getenv("OPENIA_API_KEY")
 BLIP_MODEL = os.getenv("BLIP_MODEL")
 HF_TOKEN = os.getenv("HF_TOKEN")  # Opcional si tu modelo no necesita autenticación
 
 # ----------------------------
 # Inicializar FastAPI
 # ----------------------------
-app = FastAPI(title="Backend BLIP + DeepSeek V3")
+app = FastAPI(title="Backend BLIP + GPT4.1 min")
 
 # ----------------------------
 # Habilitar CORS para tu frontend en Vercel
