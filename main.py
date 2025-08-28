@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
-from openai import OpenAI
+from openrouter import OpenRouter  # <-- Importamos OpenRouter
 import os
 from dotenv import load_dotenv
 
@@ -9,25 +9,20 @@ from dotenv import load_dotenv
 # Cargar variables de entorno
 # ----------------------------
 load_dotenv()
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 BLIP_MODEL = os.getenv("BLIP_MODEL")
-
-# ----------------------------
-# Inicializar cliente DeepSeek
-# ----------------------------
-client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
 
 # ----------------------------
 # Inicializar FastAPI
 # ----------------------------
-app = FastAPI(title="Backend BLIP + DeepSeek")
+app = FastAPI(title="Backend BLIP + DeepSeek R1")
 
 # ----------------------------
 # Habilitar CORS
 # ----------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Mejor reemplazar "*" por tu frontend
+    allow_origins=["*"],  # reemplaza por tu frontend si quieres
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,21 +34,26 @@ app.add_middleware(
 MAX_IMAGE_SIZE = (512, 512)
 
 # ----------------------------
-# Función para generar respuesta DeepSeek
+# Inicializar cliente DeepSeek
+# ----------------------------
+client = OpenRouter(api_key=OPENROUTER_API_KEY)
+
+# ----------------------------
+# Función para generar respuesta con DeepSeek R1
 # ----------------------------
 def generar_respuesta_deepseek(message: str) -> str:
     try:
         response = client.chat.completions.create(
-            model="deepseek-chat",
+            model="deepseek-r1",
             messages=[
                 {"role": "system", "content": "Eres un asistente educativo que explica conceptos de manera clara y sencilla."},
                 {"role": "user", "content": message}
             ],
-            stream=False  # False = respuesta completa de una vez
+            stream=False
         )
         return response.choices[0].message.content
     except Exception as e:
-        return f"Error al conectar con DeepSeek: {str(e)}"
+        return f"Error al conectar con DeepSeek R1: {str(e)}"
 
 # ----------------------------
 # Endpoint principal
@@ -63,12 +63,10 @@ async def chat_endpoint(message: str = Form(...), image: UploadFile = None):
     bot_message = ""
 
     if image:
-        # Lazy loading de librerías pesadas
         from transformers import AutoProcessor, BlipForConditionalGeneration
         import torch
 
         device = torch.device("cpu")
-
         processor = AutoProcessor.from_pretrained(BLIP_MODEL)
         blip_model = BlipForConditionalGeneration.from_pretrained(BLIP_MODEL).to(device)
 
@@ -80,7 +78,7 @@ async def chat_endpoint(message: str = Form(...), image: UploadFile = None):
         caption = processor.decode(output_ids[0], skip_special_tokens=True)
         bot_message += f"📸 Caption de la imagen: {caption}\n"
 
-    # Respuesta de DeepSeek
+    # Usamos DeepSeek R1
     deepseek_response = generar_respuesta_deepseek(message)
     bot_message += f"🤖 {deepseek_response}"
 
@@ -92,4 +90,3 @@ async def chat_endpoint(message: str = Form(...), image: UploadFile = None):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), workers=1)
-
