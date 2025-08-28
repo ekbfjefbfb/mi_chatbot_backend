@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
-from openrouter import OpenRouter  # <-- Importamos OpenRouter
+from openai import OpenAI  # <-- Usamos OpenAI SDK
 import os
 from dotenv import load_dotenv
 
@@ -34,9 +34,12 @@ app.add_middleware(
 MAX_IMAGE_SIZE = (512, 512)
 
 # ----------------------------
-# Inicializar cliente DeepSeek
+# Inicializar cliente DeepSeek vía OpenRouter
 # ----------------------------
-client = OpenRouter(api_key=OPENROUTER_API_KEY)
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=OPENROUTER_API_KEY,
+)
 
 # ----------------------------
 # Función para generar respuesta con DeepSeek R1
@@ -44,12 +47,11 @@ client = OpenRouter(api_key=OPENROUTER_API_KEY)
 def generar_respuesta_deepseek(message: str) -> str:
     try:
         response = client.chat.completions.create(
-            model="deepseek-r1",
+            model="deepseek/deepseek-r1",  # nombre correcto del modelo
             messages=[
                 {"role": "system", "content": "Eres un asistente educativo que explica conceptos de manera clara y sencilla."},
                 {"role": "user", "content": message}
             ],
-            stream=False
         )
         return response.choices[0].message.content
     except Exception as e:
