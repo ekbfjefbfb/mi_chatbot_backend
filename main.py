@@ -24,7 +24,12 @@ app.add_middleware(
 
 MAX_IMAGE_SIZE = (512, 512)
 
-def generar_respuesta_gpt(message: str) -> str:
+from openai import OpenAI
+
+# Inicializar cliente DeepSeek
+client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
+
+def generar_respuesta_deepseek(message: str) -> str:
     try:
         response = client.chat.completions.create(
             model="deepseek-chat",
@@ -32,12 +37,12 @@ def generar_respuesta_gpt(message: str) -> str:
                 {"role": "system", "content": "Eres un asistente educativo que explica conceptos de manera clara y sencilla."},
                 {"role": "user", "content": message}
             ],
-            stream=False,
-            max_tokens=150
+            stream=True
         )
         return response.choices[0].message.content
     except Exception as e:
         return f"Error al conectar con DeepSeek: {str(e)}"
+
 
 # ----------------------------
 # Endpoint principal
