@@ -52,8 +52,11 @@ def limpiar_texto(texto: str) -> str:
 def blip2_caption_hf(image_bytes: bytes) -> str:
     headers = {"Authorization": f"Bearer {HUGGINGFACE_API_TOKEN}"}
     files = {"file": image_bytes}
-    response = requests.post(f"https://api-inference.huggingface.co/models/{BLIP_MODEL}",
-                             headers=headers, files=files)
+    response = requests.post(
+        f"https://api-inference.huggingface.co/models/{BLIP_MODEL}",
+        headers=headers,
+        files=files
+    )
     try:
         return response.json()[0]["generated_text"]
     except Exception:
@@ -78,20 +81,17 @@ async def chat_stream(message: str = Form(...), image: UploadFile = None):
             # ----------------------------
             # Obtener respuesta completa de DeepSeek R1
             # ----------------------------
-            # Llamada al modelo DeepSeek R1
-              response = client.chat.completions.create(
+            response = client.chat.completions.create(
                 model="deepseek/deepseek-r1",
-                 messages=[
-                  {"role": "system", "content": "Eres un asistente educativo que explica conceptos de manera clara y sencilla."},
-                  {"role": "user", "content": message},
-              ],
+                messages=[
+                    {"role": "system", "content": "Eres un asistente educativo que explica conceptos de manera clara y sencilla."},
+                    {"role": "user", "content": message},
+                ],
             )
 
-        # Acceder al texto correctamente
-         texto = "".join([choice.message.content for choice in response.choices])
-         texto = limpiar_texto(texto)
-
-
+            # Acceder al texto correctamente
+            texto = "".join([choice.message.content for choice in response.choices])
+            texto = limpiar_texto(texto)
 
             # ----------------------------
             # Simular streaming letra por letra
@@ -110,4 +110,9 @@ async def chat_stream(message: str = Form(...), image: UploadFile = None):
 # ----------------------------
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), workers=1)
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 8000)),
+        workers=1
+    )
