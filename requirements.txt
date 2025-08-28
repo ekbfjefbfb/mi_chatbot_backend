@@ -4,4 +4,4 @@ python-dotenv==1.0.1
 Pillow==10.1.0
 torch==2.1.0
 transformers==4.44.2
-openrouter==0.2.3
+openrouter
