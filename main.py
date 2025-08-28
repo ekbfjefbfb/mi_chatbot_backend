@@ -78,19 +78,20 @@ async def chat_stream(message: str = Form(...), image: UploadFile = None):
             # ----------------------------
             # Obtener respuesta completa de DeepSeek R1
             # ----------------------------
-            response = client.chat.completions.create(
+            # Llamada al modelo DeepSeek R1
+              response = client.chat.completions.create(
                 model="deepseek/deepseek-r1",
-                messages=[
-                    {"role": "system", "content": "Eres un asistente educativo que explica conceptos de manera clara y sencilla."},
-                    {"role": "user", "content": message},
-                ],
+                 messages=[
+                  {"role": "system", "content": "Eres un asistente educativo que explica conceptos de manera clara y sencilla."},
+                  {"role": "user", "content": message},
+              ],
             )
 
-            texto = ""
-            for choice in response.choices:
-                texto += choice.message["content"]
+        # Acceder al texto correctamente
+         texto = "".join([choice.message.content for choice in response.choices])
+         texto = limpiar_texto(texto)
 
-            texto = limpiar_texto(texto)
+
 
             # ----------------------------
             # Simular streaming letra por letra
