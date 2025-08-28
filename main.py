@@ -5,30 +5,42 @@ from openai import OpenAI
 import os
 from dotenv import load_dotenv
 
+# ----------------------------
+# Cargar variables de entorno
+# ----------------------------
 load_dotenv()
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 BLIP_MODEL = os.getenv("BLIP_MODEL")
 
-# Cliente configurado a DeepSeek
+# ----------------------------
+# Inicializar cliente DeepSeek
+# ----------------------------
 client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
 
+# ----------------------------
+# Inicializar FastAPI
+# ----------------------------
 app = FastAPI(title="Backend BLIP + DeepSeek")
 
+# ----------------------------
+# Habilitar CORS
+# ----------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["*"],  # Mejor reemplazar "*" por tu frontend
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# ----------------------------
+# Parámetros de optimización
+# ----------------------------
 MAX_IMAGE_SIZE = (512, 512)
 
-from openai import OpenAI
-
-# Inicializar cliente DeepSeek
-client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
-
+# ----------------------------
+# Función para generar respuesta DeepSeek
+# ----------------------------
 def generar_respuesta_deepseek(message: str) -> str:
     try:
         response = client.chat.completions.create(
@@ -37,12 +49,11 @@ def generar_respuesta_deepseek(message: str) -> str:
                 {"role": "system", "content": "Eres un asistente educativo que explica conceptos de manera clara y sencilla."},
                 {"role": "user", "content": message}
             ],
-            stream=True
+            stream=False  # False = respuesta completa de una vez
         )
         return response.choices[0].message.content
     except Exception as e:
         return f"Error al conectar con DeepSeek: {str(e)}"
-
 
 # ----------------------------
 # Endpoint principal
@@ -69,17 +80,16 @@ async def chat_endpoint(message: str = Form(...), image: UploadFile = None):
         caption = processor.decode(output_ids[0], skip_special_tokens=True)
         bot_message += f"📸 Caption de la imagen: {caption}\n"
 
-
-    # Aquí reemplazamos DeepSeek por GPT-4.1 mini
-    gpt_response = generar_respuesta_gpt(message)
-    bot_message += f"🤖  {gpt_response}"
+    # Respuesta de DeepSeek
+    deepseek_response = generar_respuesta_deepseek(message)
+    bot_message += f"🤖 {deepseek_response}"
 
     return {"response": bot_message}
+
 # ----------------------------
-# Para correr local (opcional)
+# Para correr local
 # ----------------------------
 if __name__ == "__main__":
     import uvicorn
-    import os
     uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), workers=1)
 
