@@ -79,7 +79,7 @@ async def chat_stream(message: str = Form(...), image: UploadFile = None):
                 yield json.dumps({"delta": f"📸 Caption de la imagen: {caption}\n"}) + "\n"
 
             # ----------------------------
-            # Stream DeepSeek R1
+            # Stream DeepSeek R1 (síncrono)
             # ----------------------------
             stream = client.chat.completions.stream(
                 model="deepseek/deepseek-r1",
@@ -89,7 +89,8 @@ async def chat_stream(message: str = Form(...), image: UploadFile = None):
                 ],
             )
 
-            async for chunk in stream:
+            # Usamos un bucle normal en lugar de async for
+            for chunk in stream:
                 delta = chunk.choices[0].delta
                 if "content" in delta:
                     texto_limpio = limpiar_texto(delta["content"])
@@ -99,6 +100,7 @@ async def chat_stream(message: str = Form(...), image: UploadFile = None):
             yield json.dumps({"error": str(e)})
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
 
 # ----------------------------
 # Para correr local
