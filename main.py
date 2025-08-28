@@ -1,55 +1,43 @@
 from fastapi import FastAPI, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
-import openai
+from openai import OpenAI
 import os
 from dotenv import load_dotenv
 
-# ----------------------------
-# Cargar variables de entorno
-# ----------------------------
 load_dotenv()
-OPENIA_API_KEY = os.getenv("OPENIA_API_KEY")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 BLIP_MODEL = os.getenv("BLIP_MODEL")
-HF_TOKEN = os.getenv("HF_TOKEN")  # Opcional si tu modelo no necesita autenticación
 
-# ----------------------------
-# Inicializar FastAPI
-# ----------------------------
-app = FastAPI(title="Backend BLIP + GPT4.1 min")
+# Cliente configurado a DeepSeek
+client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
 
-# ----------------------------
-# Habilitar CORS para tu frontend en Vercel
-# ----------------------------
+app = FastAPI(title="Backend BLIP + DeepSeek")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Mejor reemplazar "*" por "https://tu-frontend.vercel.app"
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ----------------------------
-# Parámetros de optimización
-# ----------------------------
-MAX_IMAGE_SIZE = (512, 512)  # Redimensionar imágenes para ahorrar RAM
+MAX_IMAGE_SIZE = (512, 512)
 
-# ----------------------------
-# Función para generar respuesta GPT4.1 min
-# ----------------------------
 def generar_respuesta_gpt(message: str) -> str:
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4.1-mini",
+        response = client.chat.completions.create(
+            model="deepseek-chat",
             messages=[
                 {"role": "system", "content": "Eres un asistente educativo que explica conceptos de manera clara y sencilla."},
                 {"role": "user", "content": message}
             ],
+            stream=False,
             max_tokens=150
         )
-        return response['choices'][0]['message']['content']
+        return response.choices[0].message.content
     except Exception as e:
-        return f"Error al conectar con GPT-4.1 mini: {str(e)}"
+        return f"Error al conectar con DeepSeek: {str(e)}"
 
 # ----------------------------
 # Endpoint principal
