@@ -1,27 +1,26 @@
 from fastapi import FastAPI, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from openai import OpenAI
 import os
 import json
-from groq import Groq
 import requests
 from dotenv import load_dotenv
 import re
 import asyncio
+from groq import Groq
 
 # ----------------------------
 # Cargar variables de entorno
 # ----------------------------
 load_dotenv()
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")            # Para LLaMA 3.1
+HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")  # Para BLIP-2
 BLIP_MODEL = "Salesforce/blip2-flan-t5-xl"
 
 # ----------------------------
 # Inicializar FastAPI
 # ----------------------------
-app = FastAPI(title="Backend BLIP-2 + DeepSeek R1")
+app = FastAPI(title="Backend BLIP-2 + LLaMA 3.1 (Groq)")
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,12 +31,9 @@ app.add_middleware(
 )
 
 # ----------------------------
-# Inicializar cliente OpenRouter
+# Inicializar cliente Groq
 # ----------------------------
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=OPENROUTER_API_KEY,
-)
+groq_client = Groq(api_key=GROQ_API_KEY)
 
 # ----------------------------
 # Función para limpiar texto
@@ -71,6 +67,21 @@ def blip2_caption_hf(image_bytes: bytes) -> str:
         return f"No se pudo generar caption. Error: {e}"
 
 # ----------------------------
+# Función para LLaMA 3.1 vía Groq
+# ----------------------------
+def llama3_response(prompt: str, max_tokens: int = 1024) -> str:
+    try:
+        response = groq_client.completions.create(
+            model="meta-llama/Llama-3.1-8b-instruct",
+            prompt=prompt,
+            max_tokens=max_tokens,
+            temperature=0.7,
+        )
+        return response.choices[0].text.strip()
+    except Exception as e:
+        return f"No se pudo generar respuesta. Error: {e}"
+
+# ----------------------------
 # Endpoint streaming
 # ----------------------------
 @app.post("/chat/stream/")
@@ -88,18 +99,14 @@ async def chat_stream(message: str = Form(...), image: UploadFile = None):
                 yield json.dumps({"delta": f"📸 Caption de la imagen: {caption}\n"}) + "\n"
 
             # ----------------------------
-            # Obtener respuesta DeepSeek R1
+            # Preparar prompt para LLaMA 3.1
             # ----------------------------
-            response = client.chat.completions.create(
-              model="meta-llama/llama-3.1-70b-instruct",
-              messages=[
-                  {"role": "system", "content": "Eres un asistente educativo que explica conceptos de manera clara y sencilla."},
-                  {"role": "user", "content": message},
-    ],
-)
+            prompt = f"Eres un asistente educativo que explica conceptos de manera clara y sencilla.\nUsuario: {message}\nRespuesta:"
 
-
-            texto = response.choices[0].message.content
+            # ----------------------------
+            # Obtener respuesta de LLaMA 3.1
+            # ----------------------------
+            texto = llama3_response(prompt)
             texto = limpiar_texto(texto)
 
             # ----------------------------
@@ -122,6 +129,6 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=int(os.environ.get("PORT", 8000)),
+        port=int(os.environ.get("PORT", 8000, 8000)),
         workers=1
     )
