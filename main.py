@@ -91,12 +91,13 @@ async def chat_stream(message: str = Form(...), image: UploadFile = None):
             # Obtener respuesta DeepSeek R1
             # ----------------------------
             response = client.chat.completions.create(
-                model="deepseek/deepseek-r1",
-                messages=[
-                    {"role": "system", "content": "Eres un asistente educativo que explica conceptos de manera clara y sencilla."},
-                    {"role": "user", "content": message},
-                ],
-            )
+              model="meta-llama/llama-3.1-70b-instruct",
+              messages=[
+                  {"role": "system", "content": "Eres un asistente educativo que explica conceptos de manera clara y sencilla."},
+                  {"role": "user", "content": message},
+    ],
+)
+
 
             texto = response.choices[0].message.content
             texto = limpiar_texto(texto)
