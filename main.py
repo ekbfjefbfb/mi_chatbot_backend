@@ -51,7 +51,7 @@ def limpiar_texto(texto: str) -> str:
 # ----------------------------
 def blip2_caption_hf(image_bytes: bytes) -> str:
     headers = {"Authorization": f"Bearer {HUGGINGFACE_API_TOKEN}"}
-    files = {"file": image_bytes}
+    files = {"file":("image.jpg", image_bytes/"image.jpg")}
     response = requests.post(
         f"https://api-inference.huggingface.co/models/{BLIP_MODEL}",
         headers=headers,
@@ -74,9 +74,15 @@ async def chat_stream(message: str = Form(...), image: UploadFile = None):
             # Procesar imagen si existe
             # ----------------------------
             if image:
-                img_bytes = await image.read()
+              # Guardar el contenido en memoria
+               img_bytes = await image.read()
+             # IMPORTANTE: cerrar el archivo manualmente para evitar errores
+               await image.close()
+
                 caption = blip2_caption_hf(img_bytes)
-                yield json.dumps({"delta": f"📸 Caption de la imagen: {caption}\n"}) + "\n"
+                 yield json.dumps({"delta": f"📸 Caption de la imagen: {caption}\n"}) + "\n"
+
+
 
             # ----------------------------
             # Obtener respuesta completa de DeepSeek R1
