@@ -7,8 +7,7 @@ import requests
 from dotenv import load_dotenv
 import re
 import asyncio
-from groq import GroqClient
-
+from groq import Groq   # ✅ Import correcto
 
 
 # ----------------------------
@@ -35,8 +34,7 @@ app.add_middleware(
 # ----------------------------
 # Inicializar cliente Groq
 # ----------------------------
-
-groq_client = GroqClient(api_key=GROQ_API_KEY)
+groq_client = Groq(api_key=GROQ_API_KEY)
 
 
 # ----------------------------
@@ -73,17 +71,13 @@ def blip2_caption_hf(image_bytes: bytes) -> str:
 # ----------------------------
 # Función para LLaMA 3.1 vía Groq
 # ----------------------------
-from groq import GroqClient
-
-
-
 def llama3_response(prompt: str) -> str:
-    response = groq_client.predict(
-        model="meta-llama/Llama-3.1-8b-instruct",
-        input=prompt
+    response = groq_client.chat.completions.create(
+        model="llama-3.1-8b-instruct",   # ✅ nombre correcto
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7,
     )
-    return response.output_text.strip()
-
+    return response.choices[0].message.content.strip()
 
 
 # ----------------------------
@@ -134,6 +128,6 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=int(os.environ.get("PORT", 8000, 8000)),
+        port=int(os.environ.get("PORT", 8000)),
         workers=1
     )
