@@ -7,7 +7,8 @@ import requests
 from dotenv import load_dotenv
 import re
 import asyncio
-from groq import GroqClient
+from groq.client import GroqClient
+
 
 
 # ----------------------------
