@@ -51,19 +51,26 @@ def limpiar_texto(texto: str) -> str:
 # ----------------------------
 def blip2_caption_hf(image_bytes: bytes) -> str:
     headers = {"Authorization": f"Bearer {HUGGINGFACE_API_TOKEN}"}
-    files = {"file": ("image.jpg", image_bytes)}  # ✅ corregido
-    response = requests.post(
-        f"https://api-inference.huggingface.co/models/{BLIP_MODEL}",
-        headers=headers,
-        files=files
-    )
+    files = {"file": ("image.jpg", image_bytes)}
     try:
-        return response.json()[0]["generated_text"]
-    except Exception:
-        return "No se pudo generar caption de la imagen."
+        response = requests.post(
+            f"https://api-inference.huggingface.co/models/{BLIP_MODEL}",
+            headers=headers,
+            files=files
+        )
+        data = response.json()
+        print("BLIP Response:", data)  # 🔹 Debug
+        if isinstance(data, dict) and "generated_text" in data:
+            return data["generated_text"]
+        elif isinstance(data, list) and "generated_text" in data[0]:
+            return data[0]["generated_text"]
+        else:
+            return "No se pudo generar caption de la imagen."
+    except Exception as e:
+        return f"No se pudo generar caption. Error: {e}"
 
 # ----------------------------
-# Endpoint streaming simulado
+# Endpoint streaming
 # ----------------------------
 @app.post("/chat/stream/")
 async def chat_stream(message: str = Form(...), image: UploadFile = None):
@@ -75,13 +82,12 @@ async def chat_stream(message: str = Form(...), image: UploadFile = None):
             # ----------------------------
             if image:
                 img_bytes = await image.read()
-        
-
                 caption = blip2_caption_hf(img_bytes)
+                await image.close()
                 yield json.dumps({"delta": f"📸 Caption de la imagen: {caption}\n"}) + "\n"
 
             # ----------------------------
-            # Obtener respuesta completa de DeepSeek R1
+            # Obtener respuesta DeepSeek R1
             # ----------------------------
             response = client.chat.completions.create(
                 model="deepseek/deepseek-r1",
@@ -91,12 +97,11 @@ async def chat_stream(message: str = Form(...), image: UploadFile = None):
                 ],
             )
 
-            # ✅ Acceder al texto correctamente
             texto = response.choices[0].message.content
             texto = limpiar_texto(texto)
 
             # ----------------------------
-            # Simular streaming letra por letra
+            # Streaming letra por letra
             # ----------------------------
             for char in texto:
                 yield json.dumps({"delta": char}) + "\n"
