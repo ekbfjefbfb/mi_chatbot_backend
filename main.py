@@ -75,7 +75,7 @@ async def chat_stream(message: str = Form(...), image: UploadFile = None):
             # ----------------------------
             if image:
                 img_bytes = await image.read()
-                await image.close()
+        
 
                 caption = blip2_caption_hf(img_bytes)
                 yield json.dumps({"delta": f"📸 Caption de la imagen: {caption}\n"}) + "\n"
