@@ -7,7 +7,8 @@ import requests
 from dotenv import load_dotenv
 import re
 import asyncio
-from groq import Groq
+from groq import GroqClient
+
 
 # ----------------------------
 # Cargar variables de entorno
@@ -33,7 +34,9 @@ app.add_middleware(
 # ----------------------------
 # Inicializar cliente Groq
 # ----------------------------
-groq_client = Groq(api_key=GROQ_API_KEY)
+
+groq_client = GroqClient(api_key=GROQ_API_KEY)
+
 
 # ----------------------------
 # Función para limpiar texto
@@ -69,18 +72,17 @@ def blip2_caption_hf(image_bytes: bytes) -> str:
 # ----------------------------
 # Función para LLaMA 3.1 vía Groq
 # ----------------------------
+from groq import GroqClient
 
-def llama3_response(prompt: str, max_tokens: int = 1024) -> str:
-    try:
-        response = groq_client.completion(
-            model="meta-llama/Llama-3.1-8b-instruct",
-            prompt=prompt,
-            max_tokens=max_tokens,
-            temperature=0.7,
-        )
-        return response.text.strip()
-    except Exception as e:
-        return f"No se pudo generar respuesta. Error: {e}"
+
+
+def llama3_response(prompt: str) -> str:
+    response = groq_client.predict(
+        model="meta-llama/Llama-3.1-8b-instruct",
+        input=prompt
+    )
+    return response.output_text.strip()
+
 
 
 # ----------------------------
