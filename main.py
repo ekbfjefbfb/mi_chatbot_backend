@@ -4,6 +4,7 @@ from fastapi.responses import StreamingResponse
 from openai import OpenAI
 import os
 import json
+from groq import Groq
 import requests
 from dotenv import load_dotenv
 import re
