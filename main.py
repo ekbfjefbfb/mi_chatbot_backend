@@ -51,7 +51,7 @@ def limpiar_texto(texto: str) -> str:
 # ----------------------------
 def blip2_caption_hf(image_bytes: bytes) -> str:
     headers = {"Authorization": f"Bearer {HUGGINGFACE_API_TOKEN}"}
-    files = {"file":("image.jpg", image_bytes/"image.jpg")}
+    files = {"file": ("image.jpg", image_bytes)}  # ✅ corregido
     response = requests.post(
         f"https://api-inference.huggingface.co/models/{BLIP_MODEL}",
         headers=headers,
@@ -74,15 +74,11 @@ async def chat_stream(message: str = Form(...), image: UploadFile = None):
             # Procesar imagen si existe
             # ----------------------------
             if image:
-              # Guardar el contenido en memoria
-               img_bytes = await image.read()
-             # IMPORTANTE: cerrar el archivo manualmente para evitar errores
-               await image.close()
+                img_bytes = await image.read()
+                await image.close()
 
                 caption = blip2_caption_hf(img_bytes)
-                 yield json.dumps({"delta": f"📸 Caption de la imagen: {caption}\n"}) + "\n"
-
-
+                yield json.dumps({"delta": f"📸 Caption de la imagen: {caption}\n"}) + "\n"
 
             # ----------------------------
             # Obtener respuesta completa de DeepSeek R1
@@ -95,8 +91,8 @@ async def chat_stream(message: str = Form(...), image: UploadFile = None):
                 ],
             )
 
-            # Acceder al texto correctamente
-            texto = "".join([choice.message.content for choice in response.choices])
+            # ✅ Acceder al texto correctamente
+            texto = response.choices[0].message.content
             texto = limpiar_texto(texto)
 
             # ----------------------------
@@ -104,7 +100,7 @@ async def chat_stream(message: str = Form(...), image: UploadFile = None):
             # ----------------------------
             for char in texto:
                 yield json.dumps({"delta": char}) + "\n"
-                await asyncio.sleep(0.02)  # velocidad de escritura simulada
+                await asyncio.sleep(0.02)
 
         except Exception as e:
             yield json.dumps({"error": str(e)})
