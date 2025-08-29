@@ -69,17 +69,19 @@ def blip2_caption_hf(image_bytes: bytes) -> str:
 # ----------------------------
 # Función para LLaMA 3.1 vía Groq
 # ----------------------------
+
 def llama3_response(prompt: str, max_tokens: int = 1024) -> str:
     try:
-        response = groq_client.completions.create(
+        response = groq_client.completion(
             model="meta-llama/Llama-3.1-8b-instruct",
             prompt=prompt,
             max_tokens=max_tokens,
             temperature=0.7,
         )
-        return response.choices[0].text.strip()
+        return response.text.strip()
     except Exception as e:
         return f"No se pudo generar respuesta. Error: {e}"
+
 
 # ----------------------------
 # Endpoint streaming
