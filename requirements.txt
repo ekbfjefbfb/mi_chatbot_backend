@@ -1,34 +1,29 @@
-# ----------------------------
-# FastAPI y servidor
-# ----------------------------
-fastapi==0.111.1
+# FastAPI y servidor ASGI
+fastapi==0.111.0
 uvicorn[standard]==0.23.2
 
-# ----------------------------
-# Variables de entorno
-# ----------------------------
+# OpenAI SDK (GPT-4 mini y DALL·E)
+openai==1.32.1
+
+# Requests para llamadas a APIs externas (BLIP, NewsAPI)
+requests==2.31.0
+
+# Manejo de variables de entorno
 python-dotenv==1.0.1
 
-# ----------------------------
-# HTTP Requests
-# ----------------------------
-requests>=2.32.0
+# PDF y Word
+reportlab==4.1.1
+python-docx==0.8.12
 
-# ----------------------------
-# BLIP-2 (Hugging Face)
-# ----------------------------
-torch>=2.1.0
-transformers>=4.41.0
-accelerate>=0.23.0
-safetensors>=0.3.3
+# Asincronía y utilidades
+aiofiles==23.2.1
 
-# ----------------------------
-# Cliente Groq para LLaMA 3.1
-# ----------------------------
-groq>=0.10.0
-httpx>=0.24.1
+# Parsing y limpieza de texto
+regex==2025.8.15
 
-# ----------------------------
-# Utilidades
-# ----------------------------
-regex>=2023.8.8
+# NewsAPI cliente opcional (si usas NewsAPI)
+newsapi-python==0.2.7
+
+# Para BLIP vía Hugging Face
+huggingface-hub==0.18.3
+
