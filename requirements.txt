@@ -9,3 +9,4 @@ python-docx
 sqlalchemy
 passlib[bcrypt]
 python-jose
+psycopg2-binary>=2.9
