@@ -1,29 +1,37 @@
-# FastAPI y servidor ASGI
-fastapi==0.111.0
+# Servidor y API
+fastapi==0.111.1
 uvicorn[standard]==0.23.2
 
-# OpenAI SDK (GPT-4 mini y DALL·E)
-openai==1.32.1
-
-# Requests para llamadas a APIs externas (BLIP, NewsAPI)
-requests==2.31.0
-
-# Manejo de variables de entorno
+# Variables de entorno
 python-dotenv==1.0.1
 
+# OpenAI SDK
+openai==1.29.0
+
+# Requests para llamadas HTTP (HuggingFace, DALL·E, NewsAPI)
+requests==2.31.0
+
 # PDF y Word
-reportlab==4.1.1
+reportlab==4.1.2
+PyPDF2==3.1.0
 python-docx==0.8.12
 
-# Asincronía y utilidades
-aiofiles==23.2.1
+# Manejo de imágenes (si quieres procesar localmente o para ReportLab)
+Pillow==10.1.0
 
-# Parsing y limpieza de texto
-regex==2025.8.15
+# Base de datos PostgreSQL
+SQLAlchemy==2.0.22
+psycopg2-binary==2.9.7
 
-# NewsAPI cliente opcional (si usas NewsAPI)
-newsapi-python==0.2.7
+# Autenticación y hashing
+passlib[bcrypt]==1.7.5
+python-jose==3.3.0
 
-# Para BLIP vía Hugging Face
-huggingface-hub==0.18.3
+# Tipos y utilidades
+typing-extensions==4.7.1
 
+# Asíncrono
+asyncio==3.0.4
+
+# Optional: para parsing de PDFs más avanzado
+pdfplumber==0.9.0
