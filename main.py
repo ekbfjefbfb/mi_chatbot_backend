@@ -1,4 +1,8 @@
 # main.py
+from database import engine, Base
+
+# Crear tablas si no existen
+
 from fastapi import FastAPI, Form, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -271,3 +275,8 @@ async def assistant_stream(
         yield json_bytes({"delta": "\n✅ PDF generado listo para descarga.", "pdf_ready": True}) + b"\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+# Crear tablas si no existen
+Base.metadata.create_all(bind=engine)
+    
