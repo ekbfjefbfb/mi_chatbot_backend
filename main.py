@@ -1,14 +1,12 @@
-# main.py
-from database import engine, Base
-
-# Crear tablas si no existen
-
+# backend_full.py
 from fastapi import FastAPI, Form, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
@@ -16,8 +14,6 @@ import os, io, re, requests, asyncio, textwrap
 from openai import OpenAI
 from dotenv import load_dotenv
 from typing import Optional, List
-from models import Base, User, History
-from database import get_db
 
 # ----------------------------
 # CARGAR VARIABLES DE ENTORNO
@@ -30,12 +26,48 @@ ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 1440))
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# ----------------------------
+# DATABASE
+# ----------------------------
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# ----------------------------
+# MODELOS
+# ----------------------------
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    password = Column(String)
+    histories = relationship("History", back_populates="user")
+
+class History(Base):
+    __tablename__ = "histories"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    type = Column(String)
+    content = Column(Text)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    user = relationship("User", back_populates="histories")
+
+# Crear tablas
+Base.metadata.create_all(bind=engine)
 
 # ----------------------------
 # APP y CORS
 # ----------------------------
 app = FastAPI(title="Asistente Educativo Definitivo con Auth")
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in ALLOWED_ORIGINS] if ALLOWED_ORIGINS != ["*"] else ["*"],
@@ -222,7 +254,6 @@ async def assistant_stream(
                 if file.content_type.startswith("image/"):
                     caption = process_image_caption(contents)
                     text_parts.append(caption)
-                    # Guardar en historial
                     db.add(History(user_id=current_user.id, type="image", content=caption))
                     db.commit()
                 elif file.filename.endswith((".pdf",".docx")):
@@ -250,8 +281,6 @@ async def assistant_stream(
         )
         main_text = resp.choices[0].message.content if hasattr(resp.choices[0],"message") else resp.choices[0].text
         main_text = limpiar_texto(main_text)
-
-        # Guardar chat en historial
         db.add(History(user_id=current_user.id, type="chat", content=main_text))
         db.commit()
 
@@ -275,8 +304,3 @@ async def assistant_stream(
         yield json_bytes({"delta": "\n✅ PDF generado listo para descarga.", "pdf_ready": True}) + b"\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
-
-
-# Crear tablas si no existen
-Base.metadata.create_all(bind=engine)
-    
