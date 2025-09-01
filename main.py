@@ -14,6 +14,9 @@ import os, io, re, requests, asyncio, textwrap
 from openai import OpenAI
 from dotenv import load_dotenv
 from typing import Optional, List
+import os
+from sqlalchemy import create_engine
+
 
 # ----------------------------
 # CARGAR VARIABLES DE ENTORNO
@@ -26,7 +29,7 @@ ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 1440))
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 # ----------------------------
 # DATABASE
