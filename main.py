@@ -81,6 +81,7 @@ app.add_middleware(
 )
 
 client = OpenAI(api_key=OPENAI_API_KEY)
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # ----------------------------
