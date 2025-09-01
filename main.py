@@ -317,3 +317,9 @@ async def assistant_stream(
         yield json_bytes({"delta": "\n✅ PDF generado listo para descarga.", "pdf_ready": True}) + b"\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
