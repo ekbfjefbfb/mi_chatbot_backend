@@ -1,4 +1,4 @@
-# backend_full.py
+# backend_render_full.py
 from fastapi import FastAPI, Form, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -14,23 +14,30 @@ import os, io, re, requests, asyncio, textwrap
 from openai import OpenAI
 from dotenv import load_dotenv
 from typing import Optional, List
-import os
-from sqlalchemy import create_engine
-
 
 # ----------------------------
 # CARGAR VARIABLES DE ENTORNO
 # ----------------------------
-load_dotenv()
+load_dotenv()  # Solo útil para desarrollo local
+
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-print(OPENAI_API_KEY)
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 1440))
-DATABASE_URL = os.environ.get("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Validar variables obligatorias
+required_vars = {
+    "OPENAI_API_KEY": OPENAI_API_KEY,
+    "SECRET_KEY": SECRET_KEY,
+    "DATABASE_URL": DATABASE_URL
+}
+for name, value in required_vars.items():
+    if not value:
+        raise ValueError(f"La variable de entorno {name} no está configurada.")
 
 # ----------------------------
 # DATABASE
@@ -65,7 +72,6 @@ class History(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
     user = relationship("User", back_populates="histories")
 
-# Crear tablas
 Base.metadata.create_all(bind=engine)
 
 # ----------------------------
@@ -80,13 +86,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-client = OpenAI(api_key=OPENAI_API_KEY)
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# ----------------------------
+# CLIENTE OPENAI
+# ----------------------------
+client = OpenAI(api_key=OPENAI_API_KEY)  # Versión 1.29.0
 
 # ----------------------------
 # UTILIDADES
 # ----------------------------
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 def limpiar_texto(texto: str) -> str:
     texto = re.sub(r"[*_`~]{1,3}", "", texto)
     texto = re.sub(r"\s+", " ", texto)
@@ -106,8 +115,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 async def get_current_user(token: str = Depends(lambda: None), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
@@ -148,7 +156,7 @@ def login(username: str = Form(...), password: str = Form(...), db: Session = De
     return {"access_token": access_token, "token_type": "bearer"}
 
 # ----------------------------
-# PROCESOS DE AI
+# FUNCIONES AI
 # ----------------------------
 def process_image_caption(image_bytes: bytes) -> str:
     headers = {"Authorization": f"Bearer {HUGGINGFACE_API_TOKEN}"}
