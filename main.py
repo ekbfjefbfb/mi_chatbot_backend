@@ -23,6 +23,7 @@ from sqlalchemy import create_engine
 # ----------------------------
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+print(OPENAI_API_KEY)
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
