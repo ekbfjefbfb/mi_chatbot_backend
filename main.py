@@ -1,7 +1,7 @@
-# backend_render_full.py
+# backend_render_full_pdf.py
 from fastapi import FastAPI, Form, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -10,7 +10,7 @@ from sqlalchemy.orm import relationship
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
-import os, io, re, requests, asyncio, textwrap
+import os, io, re, requests, asyncio, textwrap, tempfile
 from openai import OpenAI
 from dotenv import load_dotenv
 from typing import Optional, List
@@ -18,8 +18,7 @@ from typing import Optional, List
 # ----------------------------
 # CARGAR VARIABLES DE ENTORNO
 # ----------------------------
-load_dotenv()  # Solo útil para desarrollo local
-
+load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
 NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
@@ -30,12 +29,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 1440)
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Validar variables obligatorias
-required_vars = {
-    "OPENAI_API_KEY": OPENAI_API_KEY,
-    "SECRET_KEY": SECRET_KEY,
-    "DATABASE_URL": DATABASE_URL
-}
-for name, value in required_vars.items():
+for name, value in {"OPENAI_API_KEY": OPENAI_API_KEY, "SECRET_KEY": SECRET_KEY, "DATABASE_URL": DATABASE_URL}.items():
     if not value:
         raise ValueError(f"La variable de entorno {name} no está configurada.")
 
@@ -71,6 +65,8 @@ class History(Base):
     content = Column(Text)
     timestamp = Column(DateTime, default=datetime.utcnow)
     user = relationship("User", back_populates="histories")
+    # PDF temporal en memoria
+    pdf_buffer = None
 
 Base.metadata.create_all(bind=engine)
 
@@ -89,7 +85,7 @@ app.add_middleware(
 # ----------------------------
 # CLIENTE OPENAI
 # ----------------------------
-client = OpenAI(api_key=OPENAI_API_KEY)  # Versión 1.29.0
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 # ----------------------------
 # UTILIDADES
@@ -165,7 +161,6 @@ def process_image_caption(image_bytes: bytes) -> str:
     r = requests.post(url, headers=headers, files=files, timeout=60)
     data = r.json()
     caption = data.get("generated_text") or str(data)
-    # Mejorar con GPT
     prompt = f"Explica para un estudiante: {caption}"
     resp = client.chat.completions.create(
         model="gpt-4.1-mini",
@@ -246,7 +241,7 @@ def search_news(query: str) -> str:
     return summary or "No se encontraron noticias recientes."
 
 # ----------------------------
-# ENDPOINT MASTER /assistant/stream
+# ENDPOINT /assistant/stream
 # ----------------------------
 @app.post("/assistant/stream")
 async def assistant_stream(
@@ -312,14 +307,42 @@ async def assistant_stream(
 
         # Crear PDF final
         pdf_buffer = create_pdf_report(title=command[:50], body=main_text, image_urls=image_urls)
-        db.add(History(user_id=current_user.id, type="pdf", content="PDF generado"))
+
+        # Guardar en History y devolver history_id
+        history_pdf = History(user_id=current_user.id, type="pdf", content="PDF generado")
+        history_pdf.pdf_buffer = pdf_buffer
+        db.add(history_pdf)
         db.commit()
-        yield json_bytes({"delta": "\n✅ PDF generado listo para descarga.", "pdf_ready": True}) + b"\n"
+        db.refresh(history_pdf)
+
+        yield json_bytes({
+            "delta": "\n✅ PDF generado listo para descarga.",
+            "pdf_ready": True,
+            "history_id": history_pdf.id
+        }) + b"\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
+# ----------------------------
+# ENDPOINT /assistant/download_pdf/{history_id}
+# ----------------------------
+@app.get("/assistant/download_pdf/{history_id}")
+async def download_pdf(history_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    history = db.query(History).filter(History.id == history_id, History.user_id == current_user.id).first()
+    if not history or not hasattr(history, "pdf_buffer") or not history.pdf_buffer:
+        raise HTTPException(status_code=404, detail="PDF no disponible")
+    
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    tmp.write(history.pdf_buffer.getbuffer())
+    tmp.close()
+
+    return FileResponse(tmp.name, filename="reporte.pdf", media_type="application/pdf")
+
+
+# ----------------------------
+# RUN
+# ----------------------------
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
-
