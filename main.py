@@ -189,7 +189,12 @@ def process_image_caption(image_bytes: bytes) -> str:
     prompt = f"Explica para un estudiante: {caption}"
     resp = client.chat.completions.create(
         model="gpt-4.1-mini",
-        messages=[{"role":"user","content":prompt}],
+        messages=[
+            
+            {"role": "system", "content": "Eres un asistente  profesional llamado  X. Nunca menciones OpenAI o ChatGPT."},
+            {"role":"user","content":prompt}
+                 
+                 ],
         max_tokens=500
     )
     text = resp.choices[0].message.content if hasattr(resp.choices[0],"message") else resp.choices[0].text
