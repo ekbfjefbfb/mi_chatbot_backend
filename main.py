@@ -1,12 +1,10 @@
-# backend_render_full_pdf.py
-from fastapi import FastAPI, Form, UploadFile, File, HTTPException, Depends
+# backend_render_full_pdf_demo.py
+from fastapi import FastAPI, Form, UploadFile, File, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
@@ -65,7 +63,6 @@ class History(Base):
     content = Column(Text)
     timestamp = Column(DateTime, default=datetime.utcnow)
     user = relationship("User", back_populates="histories")
-    # PDF temporal en memoria
     pdf_buffer = None
 
 Base.metadata.create_all(bind=engine)
@@ -73,7 +70,7 @@ Base.metadata.create_all(bind=engine)
 # ----------------------------
 # APP y CORS
 # ----------------------------
-app = FastAPI(title="Asistente Educativo Definitivo con Auth")
+app = FastAPI(title="Asistente Educativo Definitivo con Auth y Demo")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in ALLOWED_ORIGINS] if ALLOWED_ORIGINS != ["*"] else ["*"],
@@ -152,7 +149,35 @@ def login(username: str = Form(...), password: str = Form(...), db: Session = De
     return {"access_token": access_token, "token_type": "bearer"}
 
 # ----------------------------
-# FUNCIONES AI
+# DEMO
+# ----------------------------
+DEMO_TOKEN_LIMIT = 4000
+demo_tokens_used = {}  # {ip: tokens}
+
+def count_tokens(text: str) -> int:
+    return max(1, len(text)//4)
+
+@app.post("/assistant/demo")
+async def assistant_demo(command: str = Form(...), request: Request = None):
+    client_ip = request.client.host
+    used = demo_tokens_used.get(client_ip, 0)
+
+    if used >= DEMO_TOKEN_LIMIT:
+        return {"error": f"Has alcanzado el límite de 4000 tokens del demo. Por favor regístrate para continuar."}
+
+    resp = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        messages=[{"role":"user","content":command}],
+        max_tokens=500
+    )
+    text = resp.choices[0].message.content if hasattr(resp.choices[0],"message") else resp.choices[0].text
+    tokens = count_tokens(text)
+    demo_tokens_used[client_ip] = used + tokens
+
+    return {"text": text, "tokens_used": demo_tokens_used[client_ip], "tokens_left": max(0, DEMO_TOKEN_LIMIT - demo_tokens_used[client_ip])}
+
+# ----------------------------
+# FUNCIONES AI (igual que tu versión anterior)
 # ----------------------------
 def process_image_caption(image_bytes: bytes) -> str:
     headers = {"Authorization": f"Bearer {HUGGINGFACE_API_TOKEN}"}
@@ -241,7 +266,7 @@ def search_news(query: str) -> str:
     return summary or "No se encontraron noticias recientes."
 
 # ----------------------------
-# ENDPOINT /assistant/stream
+# ENDPOINT /assistant/stream (usuarios registrados)
 # ----------------------------
 @app.post("/assistant/stream")
 async def assistant_stream(
@@ -323,7 +348,6 @@ async def assistant_stream(
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
-
 # ----------------------------
 # ENDPOINT /assistant/download_pdf/{history_id}
 # ----------------------------
@@ -338,7 +362,6 @@ async def download_pdf(history_id: int, current_user: User = Depends(get_current
     tmp.close()
 
     return FileResponse(tmp.name, filename="reporte.pdf", media_type="application/pdf")
-
 
 # ----------------------------
 # RUN
