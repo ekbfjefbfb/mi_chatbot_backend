@@ -1,4 +1,3 @@
-# models.py
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -7,18 +6,26 @@ from database import Base
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(50), unique=True, index=True, nullable=False)
-    password = Column(String(200), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
+    username = Column(String, unique=True, index=True)
+    password = Column(String)
     histories = relationship("History", back_populates="user")
+    images = relationship("Image", back_populates="user")
 
 class History(Base):
-    __tablename__ = "history"
+    __tablename__ = "histories"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    type = Column(String(50))  # chat, document, image, news, pdf
+    type = Column(String)
     content = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    file_url = Column(String, nullable=True)
     user = relationship("User", back_populates="histories")
+
+class Image(Base):
+    __tablename__ = "images"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    prompt = Column(Text)
+    url = Column(String)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    user = relationship("User", back_populates="images")
